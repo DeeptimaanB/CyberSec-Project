@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  www:
+    image: php:apache
+    volumes:
+     - "./src:/var/www/html"
+    ports:
+      - "80:80"
+      - "443:443"
+
+  db:
+    image: mysql:5.7
+    volumes:
+      - ./db_data:/var/lib/mysql
+    restart: always
+    environment:
+      - MYSQL_DATABASE=php_docker
+      - MYSQL_USER=php_docker
+      - MYSQL_PASSWORD=php_docker
+      - MYSQL_ALLOW_EMPTY_PASSWORD=1
+
+  phpmyadmin:
+    depends_on:
+      - db
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    ports:
+      - "8090:80"
+    environment:
+      - PMA_HOST=db
