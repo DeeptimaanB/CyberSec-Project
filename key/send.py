@@ -2,22 +2,13 @@ from scapy.all import *
 import threading
 import datetime
 
-zeroes = "0" * 96
-# Define your custom protocol class
-class DEKX(Packet):
-    name = "DEKX"
-    fields_desc = [
-        IntField("user_id", 0),
-        IntField("offset", 99),
-        StrFixedLenField("password", zeroes, length=96),
-        StrFixedLenField("salt", "00000", length=5)
-    ]
-
-def generate_md5(text):
-    md5_hash = hashlib.md5()
-    md5_hash.update(text.encode())
-    md5_hex = md5_hash.hexdigest()
-    return md5_hex
+# Add the root folder to sys.path to be able to import Protocol
+# Get the directory of the current file (__file__) and add the parent directory to sys.path
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from Protocol import DEKX
+from helpers import *
 
 def replace_characters(original_string, replacement_string, start_point):
     end_point = start_point + len(replacement_string)
@@ -43,22 +34,6 @@ def send_packet():
     while(stop!=0):
         sendp(custom_pkt, iface="eth0")
         time.sleep(2)  # Simulate some work being done
-
-# Define a function to handle received packets
-def packet_handler(pkt, current_salt):
-    if pkt.haslayer(DEKX):
-        print("Received DEKX packet:")
-        user_id = pkt[DEKX].user_id
-        password = pkt[DEKX].password
-        offset = pkt[DEKX].offset
-        salt = pkt[DEKX].salt
-        salt = salt.decode('utf-8')
-        print(salt)
-        if (str(current_salt) != salt and int(offset) == 98):
-            current_salt = salt
-            save_salt(str(current_salt))
-            print("Salt Received")
-            sniff_process.stop()
 
 def save_salt(salt):
     with open("salt.txt", "w") as file:
@@ -96,7 +71,7 @@ while(stop!=0):
     # Start the thread
     thread.start()
     time.sleep(2)
-    sniff_process = sniff(prn=lambda packet: packet_handler(packet, current_salt), store=0, timeout = 10)
+    sniff_process = sniff(prn=lambda packet: packet_handler_send(packet, current_salt), store=0, timeout = 10)
     print("Timeout Reached")
     stop = 0
     thread.join()
