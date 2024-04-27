@@ -40,12 +40,17 @@ def generate_password(new_string, salt, offset):
     return superstring
 
 def send_packet():
-    while(stop!=0):
-        sendp(custom_pkt, iface="eth0")
-        time.sleep(2)  # Simulate some work being done
+    for i in range(5):
+        if sniffing_active:
+            sendp(custom_pkt, iface="eth0")
+            time.sleep(3)  # Simulate some work being done
+        else:
+            break
 
 # Define a function to handle received packets
 def packet_handler(pkt, current_salt):
+    global sniffing_active
+    global sniff_process
     if pkt.haslayer(DEKX):
         print("Received DEKX packet:")
         user_id = pkt[DEKX].user_id
@@ -58,7 +63,9 @@ def packet_handler(pkt, current_salt):
             current_salt = salt
             save_salt(str(current_salt))
             print("Salt Received")
-            sniff_process.stop()
+            sniffing_active = False
+            return True
+    return False
 
 def save_salt(salt):
     with open("salt.txt", "w") as file:
@@ -90,13 +97,12 @@ print(extract_password(password_md5, current_offset))
 # Send the custom packet
 bind_layers(Ether, DEKX, type=0xDE77)
 stop = 1
-while(stop!=0):
-    # Sniff packets on the network
-    thread = threading.Thread(target=send_packet)
-    # Start the thread
-    thread.start()
-    time.sleep(2)
-    sniff_process = sniff(prn=lambda packet: packet_handler(packet, current_salt), store=0, timeout = 10)
-    print("Timeout Reached")
-    stop = 0
-    thread.join()
+sniffing_active = True
+
+# Sniff packets on the network
+thread = threading.Thread(target=send_packet)
+# Start the thread
+thread.start()
+time.sleep(2)
+sniff_process = sniff(stop_filter=lambda packet: packet_handler(packet, current_salt), store=0, timeout = 10)
+thread.join()
