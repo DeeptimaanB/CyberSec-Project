@@ -1,6 +1,6 @@
 CREATE table user_keys(
-    id int(1) AUTO_INCREMENT PRIMARY KEY,
+    id int(1) PRIMARY KEY,
     password varchar(32) NULL,
-    salt varchar(5) NULL,
-    offset int(2) NULL
+    salt varchar(5) DEFAULT NULL,
+    offset int(2) DEFAULT NULL
     );
