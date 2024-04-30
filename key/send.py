@@ -2,22 +2,13 @@ from scapy.all import *
 import threading
 import datetime
 
-zeroes = "0" * 96
-# Define your custom protocol class
-class DEKX(Packet):
-    name = "DEKX"
-    fields_desc = [
-        IntField("user_id", 0),
-        IntField("offset", 99),
-        StrFixedLenField("password", zeroes, length=96),
-        StrFixedLenField("salt", "00000", length=5)
-    ]
-
-def generate_md5(text):
-    md5_hash = hashlib.md5()
-    md5_hash.update(text.encode())
-    md5_hex = md5_hash.hexdigest()
-    return md5_hex
+# Add the root folder to sys.path to be able to import Protocol
+# Get the directory of the current file (__file__) and add the parent directory to sys.path
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from Protocol import DEKX
+from helpers import *
 
 def replace_characters(original_string, replacement_string, start_point):
     end_point = start_point + len(replacement_string)
@@ -97,6 +88,18 @@ print(extract_password(password_md5, current_offset))
 # Send the custom packet
 bind_layers(Ether, DEKX, type=0xDE77)
 stop = 1
+
+while(stop!=0):
+    # Sniff packets on the network
+    thread = threading.Thread(target=send_packet)
+    # Start the thread
+    thread.start()
+    time.sleep(2)
+    sniff_process = sniff(prn=lambda packet: packet_handler_send(packet, current_salt), store=0, timeout = 10)
+    print("Timeout Reached")
+    stop = 0
+    thread.join()
+=======
 sniffing_active = True
 
 # Sniff packets on the network

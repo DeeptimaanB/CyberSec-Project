@@ -51,6 +51,24 @@ import mysql.connector
 
 server = "10.0.0.166"
 
+
+# Add the root folder to sys.path to be able to import Protocol
+# Get the directory of the current file (__file__) and add the parent directory to sys.path
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from Protocol import DEKX
+from helpers import *
+
+
+# Create the connection to the MySQL DB
+connection = mysql.connector.connect(
+    host="110.0.0.72",
+    user="php_docker",
+    password="php_docker",
+    database="php_docker"
+)
+
 def search_user(username):
     try:
         # Establish connection to the MySQL database
@@ -61,9 +79,12 @@ def search_user(username):
             database="php_docker"
         )
 
-        # Create a cursor object to execute SQL queries
-        cursor = connection.cursor()
+# Create a cursor object to execute SQL queries
+cursor = connection.cursor()
 
+
+def search_user(username):
+    try:
         # Define the SQL query to retrieve id and name
         sql_query = "SELECT id, password, salt, offset FROM user_keys WHERE id = %s"
         cursor.execute(sql_query, (username,))
@@ -100,7 +121,6 @@ def update_salt_sql(user_id, salt):
 
         # Create a cursor object to execute SQL queries
         cursor = connection.cursor()
-
         # Define the SQL query to update the name based on user ID
         sql_query = "UPDATE user_keys SET salt = %s WHERE id = %s"
         cursor.execute(sql_query, (salt, user_id))
@@ -126,28 +146,9 @@ def update_salt(id):
     update_salt_sql(id, salt_text)
     return salt_text
 
-zeroes = "0" * 96
-# Define your custom protocol class
-
-def generate_md5(text,salt):
-    text = text+salt
-    md5_hash = hashlib.md5()
-    md5_hash.update(text.encode())
-    md5_hex = md5_hash.hexdigest()
-    return md5_hex
-
 def extract_password(input_string, start_point):
     extracted_password = input_string[start_point:start_point+32]
     return extracted_password
-
-class DEKX(Packet):
-    name = "DEKX"
-    fields_desc = [
-        IntField("user_id", 0),
-        IntField("offset", 99),
-        StrFixedLenField("password", zeroes, length=96),
-        StrFixedLenField("salt", "00000", length=5)
-    ]
 
     def mysummary(self):
         return self.sprintf("user_id=%user_id% password=%password%")
@@ -220,6 +221,7 @@ def generate_salt(length=5):
     salt = ''.join(secrets.choice(valid_characters) for _ in range(length))
     return str(salt)
 
+custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX()
 # Define a function to handle received packets
 def packet_handler(pkt):
     if pkt.haslayer(DEKX):
@@ -245,4 +247,4 @@ def packet_handler(pkt):
 bind_layers(Ether, DEKX, type=0xDE77)
 
 # Sniff packets on the network
-sniff(prn=packet_handler, store=0)
+sniff(prn=packet_handler_server, store=0)
