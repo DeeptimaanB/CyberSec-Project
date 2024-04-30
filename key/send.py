@@ -35,7 +35,8 @@ def generate_random_md5():
 def generate_password(new_string, salt, offset):
     superstring = generate_random_md5() + generate_random_md5() + generate_random_md5()
     new_string = new_string + salt
-    new_string = generate_md5(new_string)
+    if(salt!=""):
+        new_string = generate_md5(new_string)
     superstring = replace_characters(superstring, new_string, offset)
     return superstring
 
@@ -65,11 +66,22 @@ def packet_handler(pkt, current_salt):
             print("Salt Received")
             sniffing_active = False
             return True
+        if (str(current_salt) != salt and current_salt==""):
+            current_salt = salt
+            save_salt(str(current_salt))
+            save_offset(offset)
+            print("Salt and Offset Received")
+            sniffing_active = False
+            return True
     return False
 
 def save_salt(salt):
     with open("salt.txt", "w") as file:
         file.write(salt)
+
+def save_offset(offset_val):
+    with open("offset.txt", "w") as file:
+        file.write(str(offset_val))
 
 def get_credentials():
     with open("credentials.txt", "r") as file:
@@ -90,9 +102,17 @@ def extract_password(input_string, start_point):
 current_salt = get_salt_offset("salt.txt")
 current_offset = int(get_salt_offset("offset.txt"))
 user_id_text, password_md5 = get_credentials()
-password_md5 = generate_password(password_md5, current_salt, 3)
 print(password_md5)
-custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id_text), password=password_md5)
+custom_pkt = Ether()/DEKX()
+if(current_salt!=""):
+    password_md5 = generate_password(password_md5, current_salt, 3)
+    custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id_text), password=password_md5)
+elif(current_salt==""):
+    password_md5 = generate_password(password_md5, current_salt, 0)
+    custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id_text), password=password_md5, offset=97)
+
+print(password_md5)
+
 print(extract_password(password_md5, current_offset))
 # Send the custom packet
 bind_layers(Ether, DEKX, type=0xDE77)
