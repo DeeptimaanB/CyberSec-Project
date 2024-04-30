@@ -102,16 +102,13 @@ def extract_password(input_string, start_point):
 current_salt = get_salt_offset("salt.txt")
 current_offset = int(get_salt_offset("offset.txt"))
 user_id_text, password_md5 = get_credentials()
-print(password_md5)
 custom_pkt = Ether()/DEKX()
 if(current_salt!=""):
-    password_md5 = generate_password(password_md5, current_salt, 3)
+    password_md5 = generate_password(password_md5, current_salt, current_offset)
     custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id_text), password=password_md5)
 elif(current_salt==""):
     password_md5 = generate_password(password_md5, current_salt, 0)
     custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id_text), password=password_md5, offset=97)
-
-print(password_md5)
 
 print(extract_password(password_md5, current_offset))
 # Send the custom packet
