@@ -1,45 +1,14 @@
 from scapy.all import *
 import threading
 import datetime
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from Protocol import DEKX
+from helpers import *
 
-zeroes = "0" * 96
-# Define your custom protocol class
-class DEKX(Packet):
-    name = "DEKX"
-    fields_desc = [
-        IntField("user_id", 0),
-        IntField("offset", 99),
-        StrFixedLenField("password", zeroes, length=96),
-        StrFixedLenField("salt", "00000", length=5)
-    ]
 
-def generate_md5(text):
-    md5_hash = hashlib.md5()
-    md5_hash.update(text.encode())
-    md5_hex = md5_hash.hexdigest()
-    return md5_hex
-
-def replace_characters(original_string, replacement_string, start_point):
-    end_point = start_point + len(replacement_string)
-    modified_string = original_string[:start_point] + replacement_string + original_string[end_point:]
-    return modified_string
-
-def generate_random_md5():
-    current_time = datetime.datetime.now()
-    time_string = str(current_time)
-    md5_hash = hashlib.md5()
-    md5_hash.update(time_string.encode())
-    md5_hex = md5_hash.hexdigest()
-    return md5_hex
-
-def generate_password(new_string, salt, offset):
-    superstring = generate_random_md5() + generate_random_md5() + generate_random_md5()
-    new_string = new_string + salt
-    if(salt!=""):
-        new_string = generate_md5(new_string)
-    superstring = replace_characters(superstring, new_string, offset)
-    return superstring
-
+# Function to send the packet to the server
 def send_packet():
     for i in range(5):
         if sniffing_active:
@@ -110,7 +79,6 @@ elif(current_salt==""):
     password_md5 = generate_password(password_md5, current_salt, 0)
     custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id_text), password=password_md5, offset=97)
 
-print(extract_password(password_md5, current_offset))
 # Send the custom packet
 bind_layers(Ether, DEKX, type=0xDE77)
 stop = 1
