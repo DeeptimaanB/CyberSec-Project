@@ -212,6 +212,10 @@ def packet_handler(pkt):
         result = search_user(int(user_id))
         if result:
             user_id_text, password_md5, salt_text, offset_text = result
+            if(salt_text == None):
+                salt_text=""
+            if(offset_text == None):
+                offset_text=97
             password = extract_password(str(password), offset_text)
             # print(str(user_id_text) + " "+ str(password_md5) + " " + str(salt_text) + " " +str(offset_text))
             if(salt_text!=""):
