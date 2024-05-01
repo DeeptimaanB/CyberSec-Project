@@ -24,3 +24,5 @@ First we run server.py and keep it running, Then we run send.py in the key syste
 system.
 
 In the later stages of running the program (we run only send.py) the normal key exchange protocol is executed and only the salt is updated from the server.
+
+Link to video presentation - https://drive.google.com/file/d/1MMcTvQvhPaB8PKDMZXaXtkPLRLEpT9ic/view?usp=sharing
