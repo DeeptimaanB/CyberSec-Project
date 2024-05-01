@@ -9,18 +9,21 @@ function getUsers($pdo) {
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
+// Function to retrieve the user information like username and password etc.
 function getUserDetails($pdo, $id) {
     $stmt = $pdo->prepare("SELECT * FROM user_keys WHERE id = ?");
     $stmt->execute([$id]);
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
+// Function to create a new user on the webpage.
 function createUser($pdo, $username, $password) {
     $password = md5($password);
     $stmt = $pdo->prepare("INSERT INTO user_keys (id, password) VALUES (?, ?)");
     $stmt->execute([$username, $password]);
 }
 
+// Function to delete the user from the database and the webpage.
 function deleteUser($pdo, $id) {
     $stmt = $pdo->prepare("DELETE FROM user_keys WHERE id = ?");
     $stmt->execute([$id]);
@@ -44,6 +47,7 @@ $users = getUsers($pdo);
 
 ?>
 
+<!--A simeple HTML file which creates a form for users to create an account with a password, which is hashed and stored in the database.-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
