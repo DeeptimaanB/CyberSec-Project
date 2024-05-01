@@ -1,9 +1,13 @@
 This project introduces a new protocol that sits right after the ethernet frame or is part of the ethernet data directly like the Internet Protocol Layer.
 
 This protocol is named as Dynamically Encrypted Key Exchange Protocol (DEKX) and contains -
+
 i) an ID Field [INTEGER, 1] 
+
 ii) a PASSWORD Field [VARCHAR, 96]
+
 iii) a SALT Field [VARCHAR, 5]
+
 iv) an OFFSET Field [INTEGER, 2]
 
 For ease of reproduction of the code and testing we have changed the Data Link Layer to be as Ethernet, otherwise to run it without Wifi both the server and the key device 
