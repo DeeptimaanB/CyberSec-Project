@@ -1,6 +1,7 @@
 # exclude everything
 db_data/*
 .venv/*
+__pycache__
 
 #exception
 db_data/.gitkeep
