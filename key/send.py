@@ -72,8 +72,7 @@ def save_salt(salt):
 
 # Function to save the retrieved offset into a file.
 def save_offset(offset_val):
-    with open("offset.txt", "w") as file:
-        print(offset_val)
+    with open("offset.txt", "w") as file:  
         file.write(str(offset_val))
 
 # Function to get the credentials from the text file.
