@@ -1,0 +1,5 @@
+datetime
+pycryptodome
+scapy
+mysql-connector-python
+Flask
