@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from Protocol import DEKX
+from helpers import *
 
 server = "0.0.0.0"
 interface = "wlan1"
@@ -140,11 +141,22 @@ def packet_handler(pkt):
         print("DEKX Packet")
         user_id = pkt[DEKX].user_id # User id of the user.
         password = pkt[DEKX].password # Password of the user.
-        password = password.decode("utf-8") # Convert the password to utf-8 for string.
+
         offset = pkt[DEKX].offset # Extract the offset from the packet.
+
+        if (offset == 259 or offset == 257):
+            print(hexlify(password).decode())
+            password = decrypt_data("server_private_key.pem", password)
+            # Convert the password to utf-8 for string.
+            password = password.decode("utf-8")
+            print("User Connecting : "+str(user_id))
+            print("Password Received : "+password)
+            print("Offset : "+str(offset))
+
         if(offset == 257): # The offset is 257 in the initial state, this is done so that we can send a random offset.
             password = extract_password(str(password), 0)
-        
+
+
         # Extract the result using the search_function.
         result = search_user(int(user_id))
         if result:
@@ -159,23 +171,29 @@ def packet_handler(pkt):
             
             # We will check two cases when the salt is empty and if the salt is not empty.
             if(salt_text!=""):
-                if (int(user_id) == user_id_text and password == temp_password):
-                        temp_salt = update_salt(str(user_id))
-                        time.sleep(2)
-                        custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id), salt = temp_salt, offset = 258)
-                        sendp(custom_pkt, iface=interface)
-                        time.sleep(0.5)  # Simulate some work being done
-                        print("New Salt Sent " + temp_salt)
+                if (int(user_id) == int(user_id_text) and password == temp_password):
+                    temp_salt = update_salt(str(user_id))
+                    print("New Salt: " + temp_salt)
+                    temp_salt = temp_salt.encode()
+                    temp_salt = encrypt_data("key_public_key.pem", temp_salt)
+                    time.sleep(2)
+                    custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id), salt = temp_salt, offset = 258)
+                    sendp(custom_pkt, iface=interface)
+                    time.sleep(0.5)  # Simulate some work being done
+                    print("New Salt Sent: " + hexlify(temp_salt).decode())
 
             elif(salt_text==""):
                 if (int(user_id) == int(user_id_text) and password == password_sha256):
                     temp_salt, temp_offset = update_salt_offset(str(user_id))
+                    print("New Salt: " + temp_salt)
+                    temp_salt = temp_salt.encode()
+                    temp_salt = encrypt_data("key_public_key.pem", temp_salt)
                     time.sleep(2)
                     custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id), salt = temp_salt, offset = temp_offset)
                     sendp(custom_pkt, iface=interface)
                     time.sleep(0.5)  # Simulate some work being done
-                    print("New Salt Sent " + temp_salt)
-                    print("New Offset Sent " + str(temp_offset))
+                    print("New Salt Sent: " + hexlify(temp_salt).decode())
+                    print("New Offset Sent: " + str(temp_offset))
                 
         else:
             print("No Data Found for userid : " + str(user_id))
