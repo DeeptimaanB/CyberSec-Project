@@ -1,6 +1,0 @@
-CREATE table user_keys(
-    id int(1) PRIMARY KEY,
-    password varchar(32) NULL,
-    salt varchar(5) DEFAULT NULL,
-    offset int(2) DEFAULT NULL
-    );
