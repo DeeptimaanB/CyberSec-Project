@@ -33,7 +33,7 @@ def login():
     password = request.form['password']
 
     # Hashing the password with MD5
-    hashed_password = hashlib.md5(password.encode()).hexdigest()
+    hashed_password = hashlib.sha256(password.encode()).hexdigest()
 
     # Saving the hashed password to a file
     with open("credentials.txt", "w") as file:
@@ -42,7 +42,7 @@ def login():
 
     # Update the file 'offset' with the value 97 and add a new line
     with open("offset.txt", "w") as file:
-        file.write("97")
+        file.write("257")
 
     # Create an empty file named 'salt'
     with open("salt.txt", "w") as file:
