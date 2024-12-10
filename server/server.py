@@ -9,7 +9,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from Protocol import DEKX
 
-server = "10.0.0.166"
+server = "0.0.0.0"
+interface = "wlan1"
+
 
 # Establish connection to the MySQL database
 connection = mysql.connector.connect(
@@ -18,6 +20,13 @@ connection = mysql.connector.connect(
     password="php_docker",
     database="php_docker"
 )
+
+def configure_access_point():
+    import os
+    os.system("nmcli device wifi hotspot ifname "+interface+" ssid MyServerAP password APpassword123")
+    print("Access Point configured. Clients can connect to SSID 'MyServerAP'.")
+
+configure_access_point()
 
 # Create a cursor object to execute SQL queries
 cursor = connection.cursor()
@@ -101,21 +110,22 @@ def update_salt(id):
 # Updating the salt and the offset by generating temperory offset.
 def update_salt_offset(id):
     salt_text = generate_salt()
-    offset_temp = str(random.randint(0, 63))
+    offset_temp = str(random.randint(0, 127))
     update_salt_offset_sql(id, salt_text, offset_temp)
     return salt_text, int(offset_temp)
 
-# Function to generate an md5 hash for the text password along with the salt.
-def generate_md5(text,salt):
+
+# Function to generate an sha256 hash for the text password along with the salt.
+def generate_sha256(text,salt):
     text = text+salt
-    md5_hash = hashlib.md5()
-    md5_hash.update(text.encode())
-    md5_hex = md5_hash.hexdigest()
-    return md5_hex
+    sha256_hash = hashlib.sha256()
+    sha256_hash.update(text.encode())
+    sha256_hex = sha256_hash.hexdigest()
+    return sha256_hex
 
 # Function to extract the password from t e hash.
 def extract_password(input_string, start_point):
-    extracted_password = input_string[start_point:start_point+32]
+    extracted_password = input_string[start_point:start_point+64]
     return extracted_password
 
 # Function to generate salt using length 5.
@@ -130,39 +140,42 @@ def packet_handler(pkt):
         print("DEKX Packet")
         user_id = pkt[DEKX].user_id # User id of the user.
         password = pkt[DEKX].password # Password of the user.
-        password = password.decode('utf-8') # Convert the password to utf-8 for string.
+        password = password.decode("utf-8") # Convert the password to utf-8 for string.
         offset = pkt[DEKX].offset # Extract the offset from the packet.
-        if(offset == 97): # The offset is 97 in the initial state, this is done so that we can send a random offset.
+        if(offset == 257): # The offset is 257 in the initial state, this is done so that we can send a random offset.
             password = extract_password(str(password), 0)
         
         # Extract the result using the search_function.
         result = search_user(int(user_id))
         if result:
-            user_id_text, password_md5, salt_text, offset_text = result
+            user_id_text, password_sha256, salt_text, offset_text = result
             if(salt_text == None):
                 salt_text=""
             if(offset_text == None):
-                offset_text=97
+                offset_text=0
             password = extract_password(str(password), offset_text)
 
+            temp_password = generate_sha256(password_sha256,salt_text)
+            
             # We will check two cases when the salt is empty and if the salt is not empty.
             if(salt_text!=""):
-                temp_password = generate_md5(password_md5, salt_text)
                 if (int(user_id) == user_id_text and password == temp_password):
-                    temp_salt = update_salt(str(user_id))
-                    time.sleep(2)
-                    custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id), salt = temp_salt, offset = 98)
-                    sendp(custom_pkt, iface="eth0")
-                    time.sleep(0.5)  # Simulate some work being done
-                    print("New Salt Sent " + temp_salt)
+                        temp_salt = update_salt(str(user_id))
+                        time.sleep(2)
+                        custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id), salt = temp_salt, offset = 258)
+                        sendp(custom_pkt, iface=interface)
+                        time.sleep(0.5)  # Simulate some work being done
+                        print("New Salt Sent " + temp_salt)
+
             elif(salt_text==""):
-                if (int(user_id) == user_id_text and password == password):
+                if (int(user_id) == int(user_id_text) and password == password_sha256):
                     temp_salt, temp_offset = update_salt_offset(str(user_id))
                     time.sleep(2)
                     custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id), salt = temp_salt, offset = temp_offset)
-                    sendp(custom_pkt, iface="eth0")
+                    sendp(custom_pkt, iface=interface)
                     time.sleep(0.5)  # Simulate some work being done
                     print("New Salt Sent " + temp_salt)
+                    print("New Offset Sent " + str(temp_offset))
                 
         else:
             print("No Data Found for userid : " + str(user_id))
@@ -171,4 +184,4 @@ def packet_handler(pkt):
 bind_layers(Ether, DEKX, type=0xDE77)
 
 # Sniff packets on the network
-sniff(prn=packet_handler, store=0)
+sniff(iface=interface, prn=packet_handler, store=0)

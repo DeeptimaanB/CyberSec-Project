@@ -12,24 +12,17 @@ services:
       - "443:443"
 
   db:
-    image: mysql:5.7
+    image: mysql
     volumes:
       - ./db_data:/var/lib/mysql
+      - ./init.sql:/data/application/init.sql
     restart: always
     ports:
       - "3306:3306"
+    command: --init-file /data/application/init.sql
     environment:
       - MYSQL_DATABASE=php_docker
       - MYSQL_USER=php_docker
       - MYSQL_PASSWORD=php_docker
       - MYSQL_ALLOW_EMPTY_PASSWORD=1
 
-  phpmyadmin:
-    depends_on:
-      - db
-    image: phpmyadmin/phpmyadmin
-    restart: always
-    ports:
-      - "8090:80"
-    environment:
-      - PMA_HOST=db

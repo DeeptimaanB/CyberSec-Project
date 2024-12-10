@@ -18,7 +18,7 @@ function getUserDetails($pdo, $id) {
 
 // Function to create a new user on the webpage.
 function createUser($pdo, $username, $password) {
-    $password = md5($password);
+    $password = hash("sha256", $password);
     $stmt = $pdo->prepare("INSERT INTO user_keys (id, password) VALUES (?, ?)");
     $stmt->execute([$username, $password]);
 }
