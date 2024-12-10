@@ -3,6 +3,7 @@ import hashlib
 # Import necessary modules from pycryptodome
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP
+from binascii import hexlify
 
 def gen_keys(private_key, public_key):
     key = RSA.generate(2048)
@@ -12,8 +13,6 @@ def gen_keys(private_key, public_key):
     with open(public_key+".pem" ,"wb") as f:
         f.write(key.public_key().export_key(format="PEM"))
 
-# This module converts binary data to hexadecimal
-from binascii import hexlify
 
 def load_private_key(filename):
     with open(filename, "rb") as f:
@@ -24,23 +23,18 @@ def load_public_key(filename):
     with open(filename, "rb") as f:
         return RSA.import_key(f.read())
 
-def encrypt_code(value, public_key_file):
+def encrypt_data(public_key_file, data):
     public_key = load_public_key(public_key_file)
-    data_to_encrypt = value.encode()
     cipher_rsa = PKCS1_OAEP.new(public_key)
-    # Encrypt the provided data using the public key
-    encrypted = cipher_rsa.encrypt(data_to_encrypt)
+    encrypted = cipher_rsa.encrypt(data)
+    return encrypted
 
-    # Convert binary data to hexadecimal and return using hexlify
-    return(hexlify(encrypted).decode())
-
-def decrypt_code(value, private_key_file):
+# Function to decrypt data
+def decrypt_data(private_key_file, encrypted_data):
     private_key = load_private_key(private_key_file)
     cipher_rsa = PKCS1_OAEP.new(private_key)
-    decrypted = cipher_rsa.decrypt(encrypted)
-
-    # Display the decrypted result as a UTF-8 encoded string
-    return(decrypted.decode())
+    decrypted = cipher_rsa.decrypt(encrypted_data)
+    return decrypted
 
 
 # Function used to replace characters with random characters in the hashed password.
