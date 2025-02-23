@@ -159,7 +159,7 @@ def packet_handler(pkt):
             s_time = float(datetime.datetime.now().timestamp())
             p_time = float(p_time)
 
-            if (s_time - p_time > 5):
+            if (s_time - p_time > 20):
                 print("Packet Expired.")
                 return
                 
