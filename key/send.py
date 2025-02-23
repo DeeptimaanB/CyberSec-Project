@@ -100,19 +100,21 @@ current_offset = int(get_salt_offset("offset.txt"))
 # Retrieve the user_id and password from the credentials file.
 user_id_text, password_sha256 = get_credentials()
 custom_pkt = Ether()/DEKX()
+p_time = str(datetime.datetime.now().timestamp()).encode("utf-8")
+p_time = encrypt_data("server_public_key.pem", p_time)
 if(current_salt!=""):
     password_sha256 = generate_password(password_sha256, current_salt, current_offset)
     print(password_sha256)
     password_sha256 = password_sha256.encode()
     password_sha256 = encrypt_data("server_public_key.pem", password_sha256)
-    custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id_text), password=password_sha256)
+    custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id_text), password=password_sha256, datetime=p_time)
 
 elif(current_salt==""):
     password_sha256 = generate_password(password_sha256, current_salt, 0)
     print(password_sha256)
     password_sha256 = password_sha256.encode()
     password_sha256 = encrypt_data("server_public_key.pem", password_sha256)
-    custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id_text), password=password_sha256)
+    custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id_text), password=password_sha256, datetime=p_time)
 
 # Send the custom packet
 bind_layers(Ether, DEKX, type=0xDE77)
