@@ -9,6 +9,7 @@ from Protocol import DEKX
 from helpers import *
 
 interface = "wlan1"
+ack_status = False
 
 # Function to connect to the server's access point
 def connect_to_access_point(ssid, password):
@@ -35,6 +36,7 @@ def packet_handler(pkt, current_salt):
     # Define a couple of global variables to determine if the sniffing is active and to stop and start the sniff process.
     global sniffing_active
     global sniff_process
+    global ack_status
 
     # Check it against the DEKX protocol and extract all the information required from the packet.
     if pkt.haslayer(DEKX):
@@ -43,6 +45,9 @@ def packet_handler(pkt, current_salt):
         password = pkt[DEKX].password # Password of the user.
         offset = pkt[DEKX].offset # This is the offset that is used to place the salt and hash it.
         salt = pkt[DEKX].salt # This is the actual value of the salt, which is used for hashing.
+        if offset == 259:
+            return
+        
         if offset != 259:
             print(hexlify(salt).decode())
             salt = decrypt_data("key_private_key.pem", salt)
@@ -52,11 +57,7 @@ def packet_handler(pkt, current_salt):
             current_salt = salt
             save_salt(current_salt.decode())
             print("Salt Received")
-            p_time = str(datetime.datetime.now().timestamp()).encode("utf-8")
-            p_time = encrypt_data("server_public_key.pem", p_time)
-            custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id_text), offset=260, datetime=p_time)
-            sendp(custom_pkt, iface=interface)
-            print("Acknowledgement Sent.")
+            ack_status = True
             sniffing_active = False
             return True
         # Check if the salt and current salt are equal and if the current salt is empty, assign it to the salt retrieved from the protocol.
@@ -66,11 +67,7 @@ def packet_handler(pkt, current_salt):
             print(offset)
             save_offset(offset)
             print("Salt and Offset Received")
-            p_time = str(datetime.datetime.now().timestamp()).encode("utf-8")
-            p_time = encrypt_data("server_public_key.pem", p_time)
-            custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id_text), offset=260, datetime=p_time)
-            sendp(custom_pkt, iface=interface)
-            print("Acknowledgement Sent.")
+            ack_status = True
             sniffing_active = False
             return True
     return False
@@ -138,3 +135,11 @@ thread.start()
 time.sleep(2)
 sniff_process = sniff(stop_filter=lambda packet: packet_handler(packet, current_salt),iface=interface, store=0, timeout = 10)
 thread.join()
+
+if ack_status == True:
+    time.sleep(1)
+    p_time = str(datetime.datetime.now().timestamp()).encode("utf-8")
+    p_time = encrypt_data("server_public_key.pem", p_time)
+    custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id_text), offset=260, datetime=p_time)
+    sendp(custom_pkt, iface=interface)
+    print("Acknowledgement Sent.")
