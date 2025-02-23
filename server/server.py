@@ -13,7 +13,7 @@ import datetime
 
 server = "0.0.0.0"
 interface = "wlan1"
-
+ack_status = False
 
 # Establish connection to the MySQL database
 connection = mysql.connector.connect(
@@ -103,17 +103,11 @@ def update_salt_offset_sql(user_id, salt, offset_temp):
         if 'connection' in locals():
             connection.close()     
 
-# Function to update salt.
-def update_salt(id):
-    salt_text = generate_salt()
-    update_salt_sql(id, salt_text)
-    return salt_text
 
 # Updating the salt and the offset by generating temperory offset.
-def update_salt_offset(id):
+def update_salt_offset():
     salt_text = generate_salt()
     offset_temp = str(random.randint(0, 127))
-    update_salt_offset_sql(id, salt_text, offset_temp)
     return salt_text, int(offset_temp)
 
 
@@ -136,29 +130,26 @@ def generate_salt(length=5):
     salt = ''.join(secrets.choice(valid_characters) for _ in range(length))
     return str(salt)
 
+def ack_handler(pkt, uid):
+    global ack_status
+    if pkt.haslayer(DEKX):
+        user_id = pkt[DEKX].user_id # User id of the user.
+        offset = pkt[DEKX].offset # Extract the offset from the packet.
+        if (offset == 260):
+            if(int(uid)==int(user_id)):
+                ack_status = True
+                return
+    return
+
 # Define a function to handle received packets
 def packet_handler(pkt):
+    global ack_status
     if pkt.haslayer(DEKX):
         print("DEKX Packet")
         user_id = pkt[DEKX].user_id # User id of the user.
         password = pkt[DEKX].password # Password of the user.
         p_time = pkt[DEKX].datetime # Time of the packet.
         offset = pkt[DEKX].offset # Extract the offset from the packet.
-
-        if (offset == 260):
-            p_time = decrypt_data("server_private_key.pem", p_time)
-            p_time = p_time.decode('utf=8')
-            print("Date-Time : "+p_time)
-            print("User Connecting : "+str(user_id))
-            print("Offset : "+str(offset))
-            s_time = float(datetime.datetime.now().timestamp())
-            p_time = float(p_time)
-
-            if (s_time - p_time > 5):
-                print("Packet Expired.")
-                return
-
-            print("Acknowledgement Received.")
 
         if (offset == 259 or offset == 257):
             print(hexlify(password).decode())
@@ -198,28 +189,45 @@ def packet_handler(pkt):
             # We will check two cases when the salt is empty and if the salt is not empty.
             if(salt_text!=""):
                 if (int(user_id) == int(user_id_text) and password == temp_password):
-                    temp_salt = update_salt(str(user_id))
+                    temp_salt = generate_salt()
+                    temp_salt_sql = temp_salt
                     print("New Salt: " + temp_salt)
                     temp_salt = temp_salt.encode()
                     temp_salt = encrypt_data("key_public_key.pem", temp_salt)
                     time.sleep(2)
                     custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id), salt = temp_salt, offset = 258)
                     sendp(custom_pkt, iface=interface)
-                    time.sleep(0.5)  # Simulate some work being done
                     print("New Salt Sent: " + hexlify(temp_salt).decode())
+                    ack_pkt = sniff(stop_filter=lambda packet: ack_handler(packet, user_id), iface=interface, store=0, timeout=5)
+                    if ack_status == True:
+                        print("Acknowledgement Received");
+                        update_salt_sql(str(user_id), temp_salt_sql)
+                        ack_status=False
+                    else:
+                        print("Acknowledgement not received.")
+                    time.sleep(0.5)  # Simulate some work being done
 
             elif(salt_text==""):
                 if (int(user_id) == int(user_id_text) and password == password_sha256):
-                    temp_salt, temp_offset = update_salt_offset(str(user_id))
+                    temp_salt, temp_offset = update_salt_offset()
+                    temp_salt_sql = temp_salt
+                    temp_offset_sql =temp_offset
                     print("New Salt: " + temp_salt)
                     temp_salt = temp_salt.encode()
                     temp_salt = encrypt_data("key_public_key.pem", temp_salt)
                     time.sleep(2)
                     custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id), salt = temp_salt, offset = temp_offset)
                     sendp(custom_pkt, iface=interface)
-                    time.sleep(0.5)  # Simulate some work being done
                     print("New Salt Sent: " + hexlify(temp_salt).decode())
                     print("New Offset Sent: " + str(temp_offset))
+                    ack_pkt = sniff(stop_filter=lambda packet: ack_handler(packet, user_id), iface=interface, store=0, timeout=5)
+                    if ack_status == True:
+                        print("Acknowledgement Received");
+                        update_salt_offset_sql(str(user_id), temp_salt_sql, temp_offset_sql)
+                        ack_status=False
+                    else:
+                        print("Acknowledgement not received.")
+                    time.sleep(0.5)  # Simulate some work being done
                 
         else:
             print("No Data Found for userid : " + str(user_id))
