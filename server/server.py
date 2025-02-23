@@ -9,6 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from Protocol import DEKX
 from helpers import *
+import datetime
 
 server = "0.0.0.0"
 interface = "wlan1"
@@ -141,7 +142,7 @@ def packet_handler(pkt):
         print("DEKX Packet")
         user_id = pkt[DEKX].user_id # User id of the user.
         password = pkt[DEKX].password # Password of the user.
-
+        p_time = pkt[DEKX].datetime # Time of the packet.
         offset = pkt[DEKX].offset # Extract the offset from the packet.
 
         if (offset == 259 or offset == 257):
@@ -149,9 +150,19 @@ def packet_handler(pkt):
             password = decrypt_data("server_private_key.pem", password)
             # Convert the password to utf-8 for string.
             password = password.decode("utf-8")
+            p_time = decrypt_data("server_private_key.pem", p_time)
+            p_time = p_time.decode('utf=8')
+            print("Date-Time : "+p_time)
             print("User Connecting : "+str(user_id))
             print("Password Received : "+password)
             print("Offset : "+str(offset))
+            s_time = float(datetime.datetime.now().timestamp())
+            p_time = float(p_time)
+
+            if (s_time - p_time > 5):
+                print("Packet Expired.")
+                return
+                
 
         if(offset == 257): # The offset is 257 in the initial state, this is done so that we can send a random offset.
             password = extract_password(str(password), 0)
