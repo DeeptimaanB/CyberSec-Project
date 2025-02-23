@@ -145,6 +145,21 @@ def packet_handler(pkt):
         p_time = pkt[DEKX].datetime # Time of the packet.
         offset = pkt[DEKX].offset # Extract the offset from the packet.
 
+        if (offset == 260):
+            p_time = decrypt_data("server_private_key.pem", p_time)
+            p_time = p_time.decode('utf=8')
+            print("Date-Time : "+p_time)
+            print("User Connecting : "+str(user_id))
+            print("Offset : "+str(offset))
+            s_time = float(datetime.datetime.now().timestamp())
+            p_time = float(p_time)
+
+            if (s_time - p_time > 5):
+                print("Packet Expired.")
+                return
+
+            print("Acknowledgement Received.")
+
         if (offset == 259 or offset == 257):
             print(hexlify(password).decode())
             password = decrypt_data("server_private_key.pem", password)
