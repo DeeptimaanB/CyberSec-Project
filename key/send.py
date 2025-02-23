@@ -52,6 +52,11 @@ def packet_handler(pkt, current_salt):
             current_salt = salt
             save_salt(current_salt.decode())
             print("Salt Received")
+            p_time = str(datetime.datetime.now().timestamp()).encode("utf-8")
+            p_time = encrypt_data("server_public_key.pem", p_time)
+            custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id_text), offset=260, datetime=p_time)
+            sendp(custom_pkt, iface=interface)
+            print("Acknowledgement Sent.")
             sniffing_active = False
             return True
         # Check if the salt and current salt are equal and if the current salt is empty, assign it to the salt retrieved from the protocol.
@@ -61,6 +66,11 @@ def packet_handler(pkt, current_salt):
             print(offset)
             save_offset(offset)
             print("Salt and Offset Received")
+            p_time = str(datetime.datetime.now().timestamp()).encode("utf-8")
+            p_time = encrypt_data("server_public_key.pem", p_time)
+            custom_pkt = Ether(dst = "ff:ff:ff:ff:ff:ff", type=0xDE77)/DEKX(user_id=int(user_id_text), offset=260, datetime=p_time)
+            sendp(custom_pkt, iface=interface)
+            print("Acknowledgement Sent.")
             sniffing_active = False
             return True
     return False
